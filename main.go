@@ -1,14 +1,15 @@
 package main
 
 import (
+	"eduva/core/di"
 	"eduva/core/docs"
 	"eduva/core/internal/db"
+	"eduva/core/router"
 	"github.com/gin-gonic/gin"
 	"github.com/nsevenpack/env/env"
+	"github.com/nsevenpack/ginresponse"
 	"github.com/nsevenpack/logger/v2/logger"
 	"github.com/nsevenpack/mignosql"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"strings"
 )
 
@@ -16,6 +17,7 @@ func init() {
 	appEnv := env.Get("APP_ENV")
 	logger.Init(appEnv)
 	initDbAndMigNosql(appEnv)
+	ginresponse.SetFormatter(&ginresponse.JsonFormatter{})
 }
 
 // @title Eduva Core
@@ -30,11 +32,11 @@ func main() {
 	host := "0.0.0.0"
 	hostTraefik := extractStringInBacktick(env.Get("HOST_TRAEFIK"))
 	port := env.Get("PORT")
-
-	setSwaggerOpt(hostTraefik)
-	s.GET("/api-doc/*any", ginSwagger.WrapHandler(swaggerFiles.Handler)) // TODO : a déplacer quand le router sera fait
-
+	dis := di.BuildDependencies() // init des dépendances
+	setSwaggerOpt(hostTraefik)    // config option swagger
+	router.New(s, dis)            // init router
 	infoServer(hostTraefik)
+
 	if err := s.Run(host + ":" + port); err != nil {
 		logger.Ef("Une erreur est survenue au lancement du serveur : %v", err)
 	}
@@ -42,7 +44,7 @@ func main() {
 
 func infoServer(hostTraefik string) {
 	logger.If("Lancement du serveur : https://%v", hostTraefik)
-	logger.If("Lancement du Swagger : https://%v/api-doc/index.html", hostTraefik)
+	logger.If("Lancement du Swagger : https://%v/swagger/index.html", hostTraefik)
 }
 
 func extractStringInBacktick(s string) string {
